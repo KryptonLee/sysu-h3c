@@ -12,8 +12,8 @@
 
 #include "packet.h"
 
-void set_eap_id_info(struct packet_header *pkt_h, const uint8_t *encry_ver_info,
-    const char *usr, size_t usr_len)
+void set_eap_id_info(struct packet_header *pkt_h, const uint8_t *ver_cipher,
+    size_t ver_cipher_len, const char *usr, size_t usr_len)
 {
     // Pointer to EAP Type field
     uint8_t *ptr = get_eap_type(pkt_h);
@@ -21,9 +21,9 @@ void set_eap_id_info(struct packet_header *pkt_h, const uint8_t *encry_ver_info,
     
     // Pointer to encrypted version info in the EAP identifier field
     ptr += EAP_TYPE_SIZE;
-    memcpy(ptr, encry_ver_info, ENCRY_VER_INFO_SIZE);
+    memcpy(ptr, ver_cipher, ver_cipher_len);
     // Pointer to username in the EAP identifier field
-    ptr += ENCRY_VER_INFO_SIZE;
+    ptr += ver_cipher_len;
     memcpy(ptr, usr, usr_len);
 }
 

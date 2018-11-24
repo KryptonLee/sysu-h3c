@@ -56,7 +56,7 @@
 #define EAP_MD5_VALUE_SIZE 16
 #define EAP_MD5_LEN_SIZE 1
 #define EAP_H3C_PWLEN_SIZE 1
-#define ENCRY_VER_INFO_SIZE 32
+#define VERSION_CIPHER_SIZE 32
 #define IP_ADDR_INFO_SIZE 6
 
 // Size of some packet type
@@ -124,8 +124,8 @@ static inline uint8_t *get_eap_md5_value(struct packet_header * pkt_h)
     return get_eap_type(pkt_h) + EAP_TYPE_SIZE + EAP_MD5_LEN_SIZE;
 }
 
-void set_eap_id_info(struct packet_header *pkt_h, const uint8_t *encry_ver_info,
-    const char *usr, size_t usr_len);
+void set_eap_id_info(struct packet_header *pkt_h, const uint8_t *ver_cipher,
+    size_t ver_cipher_len, const char *usr, size_t usr_len);
 
 void set_eap_md5_info(struct packet_header *pkt_h, const uint8_t *md5_value,
     const char *usr, size_t usr_len);

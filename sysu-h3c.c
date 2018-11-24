@@ -14,14 +14,14 @@
 #include <netinet/in.h>
 
 #include "sysu-h3c.h"
-#include "base64.h"
+#include "md5.h"
+#include "h3c_encrypt.h"
 #include "packet.h"
 #include "status.h"
 #include "io.h"
 
 #define send_pkt_header ((struct packet_header *)send_buf)
 #define recv_pkt_header ((struct packet_header *)recv_buf)
-#define get
 
 static char username[USR_LEN];
 static char password[PWD_LEN];
@@ -30,10 +30,13 @@ static uint8_t send_buf[BUF_SIZE];
 static uint8_t recv_buf[BUF_SIZE];
 
 static uint8_t ip_addr_info[IP_ADDR_INFO_SIZE];
-//static uint8_t encry_ver_info[ENCRY_VER_INFO_SIZE];
-static const unsigned char encry_ver_info[] = {0x06, 0x07, 'b', 'j', 'Q', '7', 'S', 'E',
-									'8', 'B', 'Z', '3', 'M', 'q', 'H', 'h', 's', '3', 'c', 'l', 'M', 'r',
-									'e', 'g', 'c', 'D', 'Y', '3', 'Y', '=', 0x20, 0x20};
+static uint8_t ver_cipher[VERSION_CIPHER_SIZE];
+static size_t ver_cipher_len = 0;
+
+static const uint8_t H3C_VERSION[] = {'E', 'N', ' ', 'V', '5', '.', '2', '0',
+								'-', '0', '4', '0', '8', 0x00, 0x00, 0x00};
+const static uint8_t H3C_KEY[] = {'H', 'u', 'a', 'W', 'e', 'i',
+                                '3', 'C', 'O', 'M', '1', 'X'};
 
 static void print_send_buf()
 {
@@ -75,6 +78,8 @@ static int init(const char *ifname)
 
 static inline int start()
 {
+    encrypt_h3c_ver(ver_cipher, &ver_cipher_len, H3C_VERSION,
+        sizeof(H3C_VERSION), H3C_KEY, sizeof(H3C_KEY));
     set_eapol_header(send_pkt_header, EAPOL_TYPE_START, 0);
     return sendout(send_buf, EAPOL_START_PKT_SIZE);
 }
@@ -87,42 +92,53 @@ static inline int logoff()
 
 static int send_id_pkt(uint8_t pkt_id)
 {
-    int usr_len = strlen(username);
-    uint16_t len = EAP_HEADER_SIZE + EAP_TYPE_SIZE
-         + ENCRY_VER_INFO_SIZE + usr_len;
-    printf("len = %04x\n", len);
+    size_t usr_len = strlen(username);
+    uint16_t len = EAP_HEADER_SIZE + EAP_TYPE_SIZE + ver_cipher_len + usr_len;
     
     set_eapol_header(send_pkt_header, EAPOL_TYPE_EAPPACKET, len);
-    print_send_buf();
     set_eap_header(send_pkt_header, EAP_CODE_RESPONSE, pkt_id, len);
-    print_send_buf();
-    set_eap_id_info(send_pkt_header, encry_ver_info, username, usr_len);
-    print_send_buf();
+    set_eap_id_info(send_pkt_header, ver_cipher, ver_cipher_len, username, usr_len);
+    
     return sendout(send_buf, ETHER_HEADER_SIZE + EAPOL_HEADER_SIZE + len);
 }
 
 static int send_md5_pkt(uint8_t pkt_id, uint8_t *md5_value, int md5_method)
 {
     int i;
-    int usr_len = strlen(username);
+    size_t usr_len = strlen(username);
     uint8_t md5[EAP_MD5_VALUE_SIZE];
     uint16_t len = EAP_HEADER_SIZE + EAP_TYPE_SIZE
         + EAP_MD5_LEN_SIZE + EAP_MD5_VALUE_SIZE + usr_len;
     
-    for(i = 0; i < EAP_MD5_VALUE_SIZE; i++)
-        md5[i] = password[i] ^ md5_value[i];
+    if (md5_method == MD5_METHOD_XOR)
+    {
+        for(i = 0; i < EAP_MD5_VALUE_SIZE; i++)
+            md5[i] = password[i] ^ md5_value[i];
+    }
+    else if (md5_method == MD5_METHOD_MD5)
+    {
+        size_t pwd_len = strlen(password);
+        uint8_t msg_buf[64];
+        uint8_t msg_len = EAP_ID_SIZE + pwd_len + EAP_MD5_VALUE_SIZE;
+        msg_buf[0] = pkt_id;
+        memcpy(msg_buf + EAP_ID_SIZE, password, pwd_len);
+        memcpy(msg_buf + EAP_ID_SIZE + pwd_len, md5_value, EAP_MD5_VALUE_SIZE);
+        get_md5(md5, msg_buf, msg_len);
+    }
+    
 
     set_eapol_header(send_pkt_header, EAPOL_TYPE_EAPPACKET, len);
     set_eap_header(send_pkt_header, EAP_CODE_RESPONSE, pkt_id, len);
     set_eap_md5_info(send_pkt_header, md5, username, usr_len);
+    print_send_buf();
 
     return sendout(send_pkt_header, ETHER_HEADER_SIZE + EAPOL_HEADER_SIZE + len);
 }
 
 static int send_h3c_pkt(uint8_t pkt_id)
 {
-    int usr_len = strlen(username);
-    int pwd_len = strlen(password);
+    size_t usr_len = strlen(username);
+    size_t pwd_len = strlen(password);
     uint16_t len = EAP_HEADER_SIZE + EAP_TYPE_SIZE
         + EAP_H3C_PWLEN_SIZE + pwd_len + usr_len;
     
@@ -326,6 +342,8 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to start: %s\n", strerror(errno));
 		exit(-1);
 	}
+
+    send_id_pkt(1);
 
 	signal(SIGINT, exit_handler);
 	signal(SIGTERM, exit_handler);
