@@ -130,7 +130,6 @@ static int send_md5_pkt(uint8_t pkt_id, uint8_t *md5_value, int md5_method)
     set_eapol_header(send_pkt_header, EAPOL_TYPE_EAPPACKET, len);
     set_eap_header(send_pkt_header, EAP_CODE_RESPONSE, pkt_id, len);
     set_eap_md5_info(send_pkt_header, md5, username, usr_len);
-    print_send_buf();
 
     return sendout(send_pkt_header, ETHER_HEADER_SIZE + EAPOL_HEADER_SIZE + len);
 }
@@ -342,8 +341,6 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to start: %s\n", strerror(errno));
 		exit(-1);
 	}
-
-    send_id_pkt(1);
 
 	signal(SIGINT, exit_handler);
 	signal(SIGTERM, exit_handler);
