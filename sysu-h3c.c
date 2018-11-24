@@ -33,6 +33,8 @@ static uint8_t ip_addr_info[IP_ADDR_INFO_SIZE];
 static uint8_t ver_cipher[VERSION_CIPHER_SIZE];
 static size_t ver_cipher_len = 0;
 
+static int recev_server_addr = 0;
+
 static const uint8_t H3C_VERSION[] = {'E', 'N', ' ', 'V', '5', '.', '2', '0',
 								'-', '0', '4', '0', '8', 0x00, 0x00, 0x00};
 const static uint8_t H3C_KEY[] = {'H', 'u', 'a', 'W', 'e', 'i',
@@ -78,14 +80,18 @@ static int init(const char *ifname)
 
 static inline int start()
 {
+    recev_server_addr = 0;
     encrypt_h3c_ver(ver_cipher, &ver_cipher_len, H3C_VERSION,
         sizeof(H3C_VERSION), H3C_KEY, sizeof(H3C_KEY));
+
     set_eapol_header(send_pkt_header, EAPOL_TYPE_START, 0);
     return sendout(send_buf, EAPOL_START_PKT_SIZE);
 }
 
 static inline int logoff()
 {
+    set_ether_header(send_pkt_header,
+        send_pkt_header->ether_header.ether_dhost, PAE_GROUP_ADDR);
     set_eapol_header(send_pkt_header, EAPOL_TYPE_LOGOFF, 0);
     return sendout(send_buf, EAPOL_LOGOFF_PKT_SIZE);
 }
@@ -154,6 +160,17 @@ static int response(int (*success_callback)(void), int (*failure_callback)(void)
 {
     if (recvin(recv_buf, BUF_SIZE) == RECV_ERR)
         return RECV_ERR;
+    
+    if (memcmp(recv_pkt_header->ether_header.ether_dhost,
+        send_pkt_header->ether_header.ether_shost, ETHER_ADDR_LEN) != 0)
+        return SUCCESS;
+    
+    if (recev_server_addr == 0)
+    {
+        set_ether_header(send_pkt_header, recv_pkt_header->ether_header.ether_shost,
+            send_pkt_header->ether_header.ether_shost);
+        recev_server_addr = 1;
+    }
     
     if (recv_pkt_header->eapol_header.type != EAPOL_TYPE_EAPPACKET)
     {
