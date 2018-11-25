@@ -22,7 +22,7 @@
 #include "io.h"
 
 #define RECON_TIME_AFTER_SUCCESS 5
-#define RECON_INTER_BEFORE_SUCCESS 30
+#define RECON_INTER_BEFORE_SUCCESS 300
 #define RECV_TIMEOUT_VALUE 40
 
 // Macro for convenient operation
