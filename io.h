@@ -11,6 +11,7 @@
 #define IO_H
 
 #include <stdio.h>
+#include <stdint.h>
 #include <sys/socket.h>
 #include <netpacket/packet.h>
 

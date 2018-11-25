@@ -17,6 +17,7 @@
 #include "h3c_encrypt.h"
 #include "packet.h"
 #include "status.h"
+#include "handler.h"
 #include "io.h"
 
 // Macro for convenient operation
@@ -58,7 +59,7 @@ const static uint8_t H3C_KEY[] = {'H', 'u', 'a', 'W', 'e', 'i',
  * Return Value:
  *      If success return SUCCESS, else return USR_TOO_LONG
  */
-static int set_usr(const char *usr)
+int set_usr(const char *usr)
 {
     size_t len = strlen(usr);
     if (len > USR_LEN - 1)
@@ -77,7 +78,7 @@ static int set_usr(const char *usr)
  * Return Value:
  *      If success return SUCCESS, else return PWD_TOO_LONG
  */
-static int set_pwd(const char *pwd)
+int set_pwd(const char *pwd)
 {
     size_t len = strlen(pwd);
     if (len > PWD_LEN - 1)
@@ -97,7 +98,7 @@ static int set_pwd(const char *pwd)
  * Return Value:
  *      If success, return SUCCESS, else return the No. of the error message
  */
-static int init(const char *ifname)
+int init(const char *ifname)
 {
     uint8_t hwaddr[ETHER_ADDR_LEN];
     int flag = init_net(ifname, hwaddr);
@@ -113,7 +114,7 @@ static int init(const char *ifname)
  * Return Value:
  *      If success, return SUCCESS, else return SEND_ERR
  */
-static inline int start()
+int start()
 {
     recev_server_addr = 0;
     encrypt_h3c_ver(ver_cipher, &ver_cipher_len, H3C_VERSION,
@@ -129,7 +130,7 @@ static inline int start()
  * Return Value:
  *      If success, return SUCCESS, else return SEND_ERR
  */
-static inline int logoff()
+int logoff()
 {
     // EAP logoff packet should use PAE boardcast address
     set_ether_header(send_pkt_header,
@@ -241,7 +242,7 @@ static int send_h3c_pkt(uint8_t pkt_id)
  * Return Value:
  *      Return the action status
  */
-static int response(int (*success_callback)(void), int (*failure_callback)(void),
+int response(int (*success_callback)(void), int (*failure_callback)(void),
 		int (*unkown_eapol_callback)(void), int (*unkown_eap_callback)(void),
 		int (*got_response_callback)(void))
 {
@@ -323,73 +324,9 @@ static int response(int (*success_callback)(void), int (*failure_callback)(void)
  * Return Value:
  *      If success, return SUCCESS, else return -1
  */
-static inline int cleanup()
+int cleanup()
 {
     return close_net();
-}
-
-/*
- * Handler function for authorization success
- * 
- * Return Value:
- *      If success, return SUCCESS, else return -1
- */
-static int success_handler()
-{
-	printf("You are now ONLINE.\n");
-    // Run as a daemon
-	daemon(0, 0);
-	return SUCCESS;
-}
-
-/*
- * Handler function for keep alive failure
- * 
- * Return Value:
- *      If success, return SUCCESS, else return -1
- */
-static int failure_handler()
-{
-	printf("You are now OFFLINE.\n");
-	return SUCCESS;
-}
-
-/*
- * Handler function for exit while ONLINE
- * 
- * Parameters:
- *      arg: signal
- */
-static void exit_handler(int arg)
-{
-	puts("\nExiting...\n");
-	logoff();
-	cleanup();
-	exit(0);
-}
-
-/*
- * Handler function for exit while input
- * 
- * Parameters:
- *      arg: signal
- */
-static void exit_while_input(int arg)
-{
-	putchar('\n');
-	echo_on();
-	exit(0);
-}
-
-/*
- * Default handler function
- * 
- * Return Value:
- *      SUCCESS
- */
-static int default_handler()
-{
-    return SUCCESS;
 }
 
 /*
