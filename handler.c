@@ -42,6 +42,45 @@ int failure_handler()
 }
 
 /*
+ * Handler function for unknown EAPOL type packet
+ * 
+ * Return Value:
+ *      SUCCESS
+ */
+int unkown_eapol_handler()
+{
+	// Directly skip it as it has no effect on the
+	// authorization process
+    return SUCCESS;
+}
+
+/*
+ * Handler function for unknown EAP code packet
+ * 
+ * Return Value:
+ *      SUCCESS
+ */
+int unkown_eap_handler()
+{
+	// Directly skip it as it has no effect on the
+	// authorization process
+    return SUCCESS;
+}
+
+/*
+ * Handler function for EAP response packet
+ * 
+ * Return Value:
+ *      SUCCESS
+ */
+int got_response_handler()
+{
+	// Directly skip it as it has no effect on the
+	// authorization process
+    return SUCCESS;
+}
+
+/*
  * Handler function for exit while ONLINE
  * 
  * Parameters:
@@ -66,15 +105,4 @@ void exit_while_input(int arg)
 	putchar('\n');
 	echo_on();
 	exit(0);
-}
-
-/*
- * Default handler function
- * 
- * Return Value:
- *      SUCCESS
- */
-int default_handler()
-{
-    return SUCCESS;
 }

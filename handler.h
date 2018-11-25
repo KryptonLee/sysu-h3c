@@ -25,6 +25,30 @@ int success_handler();
 int failure_handler();
 
 /*
+ * Handler function for unknown EAPOL type packet
+ * 
+ * Return Value:
+ *      SUCCESS
+ */
+int unkown_eapol_handler();
+
+/*
+ * Handler function for unknown EAP code packet
+ * 
+ * Return Value:
+ *      SUCCESS
+ */
+int unkown_eap_handler();
+
+/*
+ * Handler function for EAP response packet
+ * 
+ * Return Value:
+ *      SUCCESS
+ */
+int got_response_handler();
+
+/*
  * Handler function for exit while ONLINE
  * 
  * Parameters:
@@ -39,11 +63,3 @@ void exit_handler(int arg);
  *      arg: signal
  */
 void exit_while_input(int arg);
-
-/*
- * Default handler function
- * 
- * Return Value:
- *      SUCCESS
- */
-int default_handler();

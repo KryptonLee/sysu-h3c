@@ -435,8 +435,8 @@ int main(int argc, char **argv)
 
 	for (;;)
     {
-		if (response(success_handler, failure_handler, default_handler,
-				default_handler, default_handler) != SUCCESS)
+		if (response(success_handler, failure_handler, unkown_eapol_handler,
+				unkown_eap_handler, got_response_handler) != SUCCESS)
         {
 			fprintf(stderr, "Failed to response: %s\n", strerror(errno));
 			exit(-1);
