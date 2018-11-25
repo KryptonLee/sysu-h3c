@@ -5,7 +5,6 @@
  * 
  * Function:
  *      Methods for H3C encryption.
- * 
  */
 
 #include <stdio.h>
@@ -86,17 +85,21 @@ uint8_t *encrypt_h3c_ver(uint8_t *cipher, size_t *cipher_len,
     memcpy(rand_key_enbuf, plain, plain_len);
     h3c_xor(rand_key_enbuf, plain_len, rand_key, sizeof(uint32_t) * 2);
 
+    // Append the random int to rand_key (in BIG ENDIAN)
     rand_int = htonl(rand_int);
     memcpy(rand_key_enbuf + plain_len, &rand_int, sizeof(uint32_t));
+    // Use key to XOR it
     h3c_xor(rand_key_enbuf, rand_key_enbuf_len, key, key_len);
-
+    // Use base64 encode the XOR result
     base64_encode(h3c_key_enbuf, rand_key_enbuf, rand_key_enbuf_len);
 
+    // Copy the base64 ciphertext to output buffer (with prefix and postfix)
     memcpy(cipher, prefix, sizeof(prefix));
     memcpy(cipher + sizeof(prefix), h3c_key_enbuf, h3c_key_enbuf_len);
     memcpy(cipher + sizeof(prefix) + h3c_key_enbuf_len, postfix, sizeof(postfix));
     *cipher_len = sizeof(prefix) + h3c_key_enbuf_len + sizeof(postfix);
 
+    // Free the allocated memory which will be used any more
     free(rand_key_enbuf);
     free(h3c_key_enbuf);
 

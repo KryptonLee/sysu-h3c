@@ -5,7 +5,6 @@
  * 
  * Function:
  *      MD5 hash method.
- * 
  */
 
 #ifndef MD5_H

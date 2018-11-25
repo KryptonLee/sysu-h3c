@@ -5,7 +5,6 @@
  * 
  * Function:
  *      Base64 encode and decode method.
- *
  */
 
 #ifndef BASE64_H

@@ -5,7 +5,6 @@
  * 
  * Function:
  *      Methods for H3C encryption.
- * 
  */
 
 #ifndef H3C_ENCRYPT_H

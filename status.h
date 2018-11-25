@@ -5,7 +5,6 @@
  * 
  * Function:
  *      Define the status code
- * 
  */
 
 #define SUCCESS 0

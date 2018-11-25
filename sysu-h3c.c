@@ -5,7 +5,6 @@
  * 
  * Function:
  *      Main program to run.
- * 
  */
 
 #include <signal.h>
@@ -20,34 +19,45 @@
 #include "status.h"
 #include "io.h"
 
+// Macro for convenient operation
 #define send_pkt_header ((struct packet_header *)send_buf)
 #define recv_pkt_header ((struct packet_header *)recv_buf)
 
+// Buffers for username and password
 static char username[USR_LEN];
 static char password[PWD_LEN];
 
-static uint8_t send_buf[BUF_SIZE];
-static uint8_t recv_buf[BUF_SIZE];
+// Buffers for outgoing and incoming packet
+static uint8_t send_buf[PACKET_BUF_SIZE];
+static uint8_t recv_buf[PACKET_BUF_SIZE];
 
-static uint8_t ip_addr_info[IP_ADDR_INFO_SIZE];
-static uint8_t ver_cipher[VERSION_CIPHER_SIZE];
+// Buffer for IP address info in EAP identifier packet
+static uint8_t ip_info[IP_INFO_BUF_SIZE];
+static size_t ip_info_len = 0;
+// Buffer for version ciphertext in EAP identifier packet
+static uint8_t ver_cipher[VER_CIPHER_BUF_SIZE];
 static size_t ver_cipher_len = 0;
 
+// Record whether the server address is recevived
 static int recev_server_addr = 0;
+// Record which MD5-Challenge method should be used
+static int md5_method = MD5_METHOD_XOR;
 
+// Constant value for H3C version and key
 static const uint8_t H3C_VERSION[] = {'E', 'N', ' ', 'V', '5', '.', '2', '0',
 								'-', '0', '4', '0', '8', 0x00, 0x00, 0x00};
 const static uint8_t H3C_KEY[] = {'H', 'u', 'a', 'W', 'e', 'i',
                                 '3', 'C', 'O', 'M', '1', 'X'};
 
-static void print_send_buf()
-{
-    int i = 0;
-    for(i = 0; i < BUF_SIZE; i++)
-        printf("%02x", send_buf[i]);
-    printf("\n");
-}
-
+/*
+ * Set username to buffer
+ * 
+ * Parameters:
+ *      usr: pointer to the username string
+ * 
+ * Return Value:
+ *      If success return SUCCESS, else return USR_TOO_LONG
+ */
 static int set_usr(const char *usr)
 {
     size_t len = strlen(usr);
@@ -58,6 +68,15 @@ static int set_usr(const char *usr)
     return SUCCESS;
 }
 
+/*
+ * Set password to buffer
+ * 
+ * Parameters:
+ *      usr: pointer to the password string
+ * 
+ * Return Value:
+ *      If success return SUCCESS, else return PWD_TOO_LONG
+ */
 static int set_pwd(const char *pwd)
 {
     size_t len = strlen(pwd);
@@ -68,6 +87,16 @@ static int set_pwd(const char *pwd)
     return SUCCESS;
 }
 
+/*
+ * Initialize a socket bind to the ethernet interface ifname, and set
+ * the ethernet header of outgoing packet buffer
+ * 
+ * Parameters:
+ *      ifname: pointer to interface name string
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return the No. of the error message
+ */
 static int init(const char *ifname)
 {
     uint8_t hwaddr[ETHER_ADDR_LEN];
@@ -78,6 +107,12 @@ static int init(const char *ifname)
     return flag;
 }
 
+/*
+ * Send a EAPOL start packet to initialize authorization
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return SEND_ERR
+ */
 static inline int start()
 {
     recev_server_addr = 0;
@@ -88,27 +123,56 @@ static inline int start()
     return sendout(send_buf, EAPOL_START_PKT_SIZE);
 }
 
+/*
+ * Send a EAPOL logoff packet to logoff
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return SEND_ERR
+ */
 static inline int logoff()
 {
+    // EAP logoff packet should use PAE boardcast address
     set_ether_header(send_pkt_header,
         send_pkt_header->ether_header.ether_dhost, PAE_GROUP_ADDR);
     set_eapol_header(send_pkt_header, EAPOL_TYPE_LOGOFF, 0);
     return sendout(send_buf, EAPOL_LOGOFF_PKT_SIZE);
 }
 
+/*
+ * Send a EAP identifier packet
+ * 
+ * Parameters:
+ *      pkt_id: packet id
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return SEND_ERR
+ */
 static int send_id_pkt(uint8_t pkt_id)
 {
     size_t usr_len = strlen(username);
-    uint16_t len = EAP_HEADER_SIZE + EAP_TYPE_SIZE + ver_cipher_len + usr_len;
+    uint16_t len = EAP_HEADER_SIZE + EAP_TYPE_SIZE
+        + ver_cipher_len + usr_len;
     
     set_eapol_header(send_pkt_header, EAPOL_TYPE_EAPPACKET, len);
     set_eap_header(send_pkt_header, EAP_CODE_RESPONSE, pkt_id, len);
-    set_eap_id_info(send_pkt_header, ver_cipher, ver_cipher_len, username, usr_len);
+    set_eap_id_info(send_pkt_header, ver_cipher,
+        ver_cipher_len, username, usr_len);
     
     return sendout(send_buf, ETHER_HEADER_SIZE + EAPOL_HEADER_SIZE + len);
 }
 
-static int send_md5_pkt(uint8_t pkt_id, uint8_t *md5_value, int md5_method)
+/*
+ * Send a EAP MD5-Challenge packet
+ * 
+ * Parameters:
+ *      pkt_id: packet id
+ *      md5_value: pointer to the buffer where MD5-value in incoming
+ *                 packet is stored
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return SEND_ERR
+ */
+static int send_md5_pkt(uint8_t pkt_id, uint8_t *md5_value)
 {
     int i;
     size_t usr_len = strlen(username);
@@ -118,11 +182,13 @@ static int send_md5_pkt(uint8_t pkt_id, uint8_t *md5_value, int md5_method)
     
     if (md5_method == MD5_METHOD_XOR)
     {
+        // Use XOR method to get challenge value
         for(i = 0; i < EAP_MD5_VALUE_SIZE; i++)
             md5[i] = password[i] ^ md5_value[i];
     }
     else if (md5_method == MD5_METHOD_MD5)
     {
+        // Use MD5 hash method to get challenge value
         size_t pwd_len = strlen(password);
         uint8_t msg_buf[64];
         uint8_t msg_len = EAP_ID_SIZE + pwd_len + EAP_MD5_VALUE_SIZE;
@@ -132,7 +198,6 @@ static int send_md5_pkt(uint8_t pkt_id, uint8_t *md5_value, int md5_method)
         get_md5(md5, msg_buf, msg_len);
     }
     
-
     set_eapol_header(send_pkt_header, EAPOL_TYPE_EAPPACKET, len);
     set_eap_header(send_pkt_header, EAP_CODE_RESPONSE, pkt_id, len);
     set_eap_md5_info(send_pkt_header, md5, username, usr_len);
@@ -140,6 +205,15 @@ static int send_md5_pkt(uint8_t pkt_id, uint8_t *md5_value, int md5_method)
     return sendout(send_pkt_header, ETHER_HEADER_SIZE + EAPOL_HEADER_SIZE + len);
 }
 
+/*
+ * Send a EAP H3C packet
+ * 
+ * Parameters:
+ *      pkt_id: packet id
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return SEND_ERR
+ */
 static int send_h3c_pkt(uint8_t pkt_id)
 {
     size_t usr_len = strlen(username);
@@ -154,11 +228,24 @@ static int send_h3c_pkt(uint8_t pkt_id)
     return sendout(send_buf, ETHER_HEADER_SIZE + EAPOL_HEADER_SIZE + len);
 }
 
+/*
+ * Response a received packet
+ * 
+ * Parameters:
+ *      success_callback: callback function for EAP success packet
+ *      failure_callback: callback function for EAP failure packet
+ *      unkown_eapol_callback: callback function for unknown EAPOL packet
+ *      unkown_eap_callback: callback function for unknown EAP packet
+ *      got_response_callback: callback function for EAP reponse packet
+ * 
+ * Return Value:
+ *      Return the action status
+ */
 static int response(int (*success_callback)(void), int (*failure_callback)(void),
 		int (*unkown_eapol_callback)(void), int (*unkown_eap_callback)(void),
-		int (*got_response_callback)(void), char md5_method)
+		int (*got_response_callback)(void))
 {
-    if (recvin(recv_buf, BUF_SIZE) == RECV_ERR)
+    if (recvin(recv_buf, PACKET_BUF_SIZE) == RECV_ERR)
         return RECV_ERR;
     
     if (memcmp(recv_pkt_header->ether_header.ether_dhost,
@@ -188,6 +275,14 @@ static int response(int (*success_callback)(void), int (*failure_callback)(void)
         
         return SUCCESS_UNHANDLED;
     }
+    else if (recv_pkt_header->eap_header.code == EAP_CODE_FAILURE)
+    {
+        // Got EAP failure
+        if (failure_callback != NULL)
+            return failure_callback();
+        
+        return FAILURE_UNHANDLED;
+    }
     else if (recv_pkt_header->eap_header.code == EAP_CODE_REQUEST)
     {
         // Got EAP request, response according to request type
@@ -197,7 +292,7 @@ static int response(int (*success_callback)(void), int (*failure_callback)(void)
                 return send_id_pkt(recv_pkt_header->eap_header.id);
             case EAP_TYPE_MD5:
                 return send_md5_pkt(recv_pkt_header->eap_header.id,
-                    get_eap_md5_value(recv_pkt_header), md5_method);
+                    get_eap_md5_value(recv_pkt_header));
             case EAP_TYPE_H3C:
                 return send_h3c_pkt(recv_pkt_header->eap_header.id);
         }
@@ -222,24 +317,49 @@ static int response(int (*success_callback)(void), int (*failure_callback)(void)
     }
 }
 
+/*
+ * Release the resource
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return -1
+ */
 static inline int cleanup()
 {
     return close_net();
 }
 
+/*
+ * Handler function for authorization success
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return -1
+ */
 static int success_handler()
 {
 	printf("You are now ONLINE.\n");
+    // Run as a daemon
 	daemon(0, 0);
 	return SUCCESS;
 }
 
+/*
+ * Handler function for keep alive failure
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return -1
+ */
 static int failure_handler()
 {
 	printf("You are now OFFLINE.\n");
 	return SUCCESS;
 }
 
+/*
+ * Handler function for exit while ONLINE
+ * 
+ * Parameters:
+ *      arg: signal
+ */
 static void exit_handler(int arg)
 {
 	puts("\nExiting...\n");
@@ -248,18 +368,33 @@ static void exit_handler(int arg)
 	exit(0);
 }
 
-static void exit_with_echo_on(int arg)
+/*
+ * Handler function for exit while input
+ * 
+ * Parameters:
+ *      arg: signal
+ */
+static void exit_while_input(int arg)
 {
 	putchar('\n');
 	echo_on();
 	exit(0);
 }
 
+/*
+ * Default handler function
+ * 
+ * Return Value:
+ *      SUCCESS
+ */
 static int default_handler()
 {
     return SUCCESS;
 }
 
+/*
+ * Main program entrance
+ */
 int main(int argc, char **argv)
 {
     int opt;
@@ -268,7 +403,6 @@ int main(int argc, char **argv)
     char *pwd = NULL;
     char *md5_str = "md5";
     int alloc_pwd_mem = 0;
-    int md5_method = MD5_METHOD_XOR;
 
     while ((opt = getopt(argc, argv, "i:u:p:m:h")) != -1)
     {
@@ -324,8 +458,8 @@ int main(int argc, char **argv)
 		}
 		printf("Password for %s:", usr);
 
-		signal(SIGINT, exit_with_echo_on);
-		signal(SIGTERM, exit_with_echo_on);
+		signal(SIGINT, exit_while_input);
+		signal(SIGTERM, exit_while_input);
 
 		echo_off();
 		fgets(pwd, PWD_LEN - 1, stdin);
@@ -365,7 +499,7 @@ int main(int argc, char **argv)
 	for (;;)
     {
 		if (response(success_handler, failure_handler, default_handler,
-				default_handler, default_handler, md5_method) != SUCCESS)
+				default_handler, default_handler) != SUCCESS)
         {
 			fprintf(stderr, "Failed to response: %s\n", strerror(errno));
 			exit(-1);

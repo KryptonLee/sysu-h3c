@@ -4,8 +4,7 @@
  * Creation Time: 2018.11.23
  * 
  * Function:
- *      IO methods for terminal and log
- * 
+ *      IO methods for network, terminal and log
  */
 
 #ifndef IO_H
@@ -15,17 +14,67 @@
 #include <sys/socket.h>
 #include <netpacket/packet.h>
 
-static int sockfd;
-static struct sockaddr_ll addr;
-
+/*
+ * Set echo off in terminal
+ * 
+ * Return Value:
+ *      If success, return 0, else return -1
+ */
 int echo_off();
+/*
+ * Set echo on in terminal
+ * 
+ * Return Value:
+ *      If success, return 0, else return -1
+ */
 int echo_on();
 
+/*
+ * Initialize a socket bind to the ethernet interface ifname, and fitch its
+ * MAC address to hwaddr
+ * 
+ * Parameters:
+ *      ifname: pointer to interface name string
+ *      hwaddr: pointer to the buffer where the MAC address is stored
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return the No. of the error message.
+ */
 int init_net(const char *ifname, uint8_t *hwaddr);
+/*
+ * Close the socket.
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, otherwise return -1
+ */
 int close_net();
+
+/*
+ * Send out data to the opened socket.
+ * 
+ * Parameters:
+ *      buf: pointer to the buffer where the data is stored
+ *      len: length of the data
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return the No. of the SEND_ERR.
+ */
 int sendout(const void *buf, size_t len);
+/*
+ * Receive in data from the opened socket.
+ * 
+ * Parameters:
+ *      buf: pointer to the buffer where the data is to be stored
+ *      len: length of the data received
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return the No. of the RECV_ERR.
+ */
 int recvin(void *buf, size_t len);
 
-int usage(FILE *stream);
+/*
+ * Print the usage of this program to stream.
+ */
+void usage(FILE *stream);
 
 #endif // IO_H

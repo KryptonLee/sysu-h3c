@@ -55,14 +55,12 @@ static const uint32_t S[] = {
 /*
  * The main loop operation for a block (512 bits) in MD5 hash method
  * 
- * 
  * Parameters:
  *      M: 16 groups in a block
  *      a_stat: pointer to the chaining variable A
  *      b_stat: pointer to the chaining variable B
  *      c_stat: pointer to the chaining variable C
  *      d_stat: pointer to the chaining variable D
- * 
  */
 static void main_loop(uint32_t M[], uint32_t *a_stat, 
     uint32_t *b_stat, uint32_t *c_stat,  uint32_t *d_stat)
@@ -111,7 +109,6 @@ static void main_loop(uint32_t M[], uint32_t *a_stat,
 /*
  * Calculate the length of the data after padding in bytes
  * 
- * 
  * Parameters:
  *      src_len: the length of source data in bytes
  * 
@@ -129,7 +126,6 @@ static inline size_t get_padding_len(size_t src_len)
  * followed by other bits 0, until the length equals (M * 512 bit + 448
  * bit). The last 64 bits will be filled by the original length in bits
  * of the source data (before padding), in LITTLE ENDIAN.
- * 
  * 
  * Parameters:
  *      pad_buf: pointer to the buffer where the data after padding is

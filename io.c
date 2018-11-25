@@ -4,8 +4,7 @@
  * Creation Time: 2018.11.23
  * 
  * Function:
- *      IO methods for terminal and log
- * 
+ *      IO methods for network, terminal and log
  */
 
 #include <stdio.h>
@@ -24,28 +23,47 @@
 #include "packet.h"
 #include "status.h"
 
+static int sockfd;
+static struct sockaddr_ll addr;
+
+/*
+ * Set echo off in terminal
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return -1
+ */
 int echo_off()
 {
     struct termios flags;
+	// Get terminal IO flags
 	if (tcgetattr(fileno(stdin), &flags) == -1)
 	{
 		fprintf(stderr, "Failed to echo_off: %s", strerror(errno));
 		return -1;
 	}
 
+	// Set ECHO flag off
 	flags.c_lflag &= ~ECHO;
 
+	// Set terminal IO flags
 	if (tcsetattr(fileno(stdin), TCSANOW, &flags) == -1)
 	{
 		fprintf(stderr, "Failed to echo_off: %s", strerror(errno));
 		return -1;
 	}
 
-	return 0;
+	return SUCCESS;
 }
 
+/*
+ * Set echo on in terminal
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return -1
+ */
 int echo_on()
 {
+	// Get terminal IO flags
 	struct termios flags;
 	if (tcgetattr(fileno(stdin), &flags) == -1)
 	{
@@ -53,30 +71,46 @@ int echo_on()
 		return -1;
 	}
 
+	// Set ECHO flag on
 	flags.c_lflag |= ECHO;
 
+	// Set terminal IO flags
 	if (tcsetattr(fileno(stdin), TCSANOW, &flags) == -1)
 	{
 		fprintf(stderr, "Failed to echo_on: %s", strerror(errno));
 		return -1;
 	}
 
-	return 0;
+	return SUCCESS;
 }
 
+/*
+ * Initialize a socket bind to the ethernet interface ifname, and fitch its
+ * MAC address to hwaddr
+ * 
+ * Parameters:
+ *      ifname: pointer to interface name string
+ *      hwaddr: pointer to the buffer where the MAC address is stored
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return the No. of the error message.
+ */
 int init_net(const char *ifname, uint8_t *hwaddr)
 {
 	struct ifreq ifr;
 	
-	strcpy(ifr.ifr_name, ifname);
+	// Open a socket
 	if ((sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETHER_TYPE_PAE))) == -1)
 		return SOCKET_OPEN_ERR;
 	
+	// Get interface index by name
+	strcpy(ifr.ifr_name, ifname);
 	if (ioctl(sockfd, SIOCGIFINDEX, &ifr) == -1)
 		return SOCKET_SET_IF_ERR;
 	else
 		addr.sll_ifindex = ifr.ifr_ifindex;
 	
+	// Get interface MAC address
 	if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) == -1)
 		return SOCKET_GET_HWADDR_ERR;
 	
@@ -85,11 +119,27 @@ int init_net(const char *ifname, uint8_t *hwaddr)
 	return SUCCESS;
 }
 
+/*
+ * Close the socket.
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return -1
+ */
 int close_net()
 {
 	return close(sockfd);
 }
 
+/*
+ * Send out data to the opened socket.
+ * 
+ * Parameters:
+ *      buf: pointer to the buffer where the data is stored
+ *      len: length of the data
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return the No. of the SEND_ERR.
+ */
 int sendout(const void *buf, size_t len)
 {
 	if (sendto(sockfd, buf, len, 0, (struct sockaddr *)&addr, sizeof(addr)) == -1)
@@ -98,6 +148,16 @@ int sendout(const void *buf, size_t len)
 	return SUCCESS;
 }
 
+/*
+ * Receive in data from the opened socket.
+ * 
+ * Parameters:
+ *      buf: pointer to the buffer where the data is to be stored
+ *      len: length of the data received
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return the No. of the RECV_ERR.
+ */
 int recvin(void *buf, size_t len)
 {
 	socklen_t addr_len = sizeof(addr);
@@ -107,12 +167,16 @@ int recvin(void *buf, size_t len)
 	return SUCCESS;
 }
 
-int usage(FILE *stream)
+/*
+ * Print the usage of this program to stream.
+ */
+void usage(FILE *stream)
 {
 	fprintf(stream, "Usage: sysu-h3c [OPTION]...\n");
 	fprintf(stream, "  -i <interface>\tspecify interface, required\n");
 	fprintf(stream, "  -u <username>\t\tspecify username, required\n");
 	fprintf(stream, "  -p <password>\t\tspecify password, optional\n");
-	fprintf(stream, "  -m <md5 method>\tspecify xor or md5 to calculate MD5-Challenge value, optional, default is xor\n");
+	fprintf(stream, "  -m <md5 method>\tspecify xor or md5 to calculate \
+MD5-Challenge value, \n\t\t\toptional, default is xor\n");
 	fprintf(stream, "  -h\t\t\tshow this message\n");
 }
