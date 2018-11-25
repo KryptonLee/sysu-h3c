@@ -191,5 +191,7 @@ void usage(FILE *stream)
 	fprintf(stream, "  -p <password>\t\tspecify password, optional\n");
 	fprintf(stream, "  -m <md5 method>\tspecify xor or md5 to calculate \
 MD5-Challenge value, \n\t\t\toptional, default is xor\n");
+	fprintf(stream, "  -d <dhcp command>\tspecify dhcp command to get IP, \
+such as 'dhclient' and 'udhcpc' \n\t\t\toptional, default is 'dhclient'\n");
 	fprintf(stream, "  -h\t\t\tshow this message\n");
 }

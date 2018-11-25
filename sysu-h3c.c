@@ -21,6 +21,18 @@
 #include "handler.h"
 #include "io.h"
 
+// Define the constants
+#define PACKET_BUF_SIZE 256
+#define DHCP_CMD_BUF_SIZE 32
+#define USR_LEN 32
+#define PWD_LEN 32
+#define VER_CIPHER_BUF_SIZE 64
+#define IP_INFO_BUF_SIZE 6
+
+#define MD5_METHOD_XOR 0
+#define MD5_METHOD_MD5 0
+
+// Timeout constants
 #define RECON_TIME_AFTER_SUCCESS 5
 #define RECON_INTER_BEFORE_SUCCESS 300
 #define RECV_TIMEOUT_VALUE 40
@@ -32,6 +44,9 @@
 // Buffers for username and password
 static char username[USR_LEN];
 static char password[PWD_LEN];
+
+// Buffer for DHCP command
+static char dhcp_cmd_buf[DHCP_CMD_BUF_SIZE];
 
 // Buffers for outgoing and incoming packet
 static uint8_t send_buf[PACKET_BUF_SIZE];
@@ -97,6 +112,25 @@ int set_pwd(const char *pwd)
         return PWD_TOO_LONG;
     
     strcpy(password, pwd);
+    return SUCCESS;
+}
+
+/*
+ * Set dhcp command to buffer
+ * 
+ * Parameters:
+ *      usr: pointer to the dhcp command string
+ * 
+ * Return Value:
+ *      If success return SUCCESS, else return DHCP_CMD_TOO_LONG
+ */
+int set_dhcp_cmd(const char *dhcp_cmd)
+{
+    size_t len = strlen(dhcp_cmd);
+    if (len > DHCP_CMD_BUF_SIZE - 1)
+        return DHCP_CMD_TOO_LONG;
+    
+    strcpy(dhcp_cmd_buf, dhcp_cmd);
     return SUCCESS;
 }
 
@@ -341,6 +375,9 @@ int response(int (*success_callback)(void), int (*failure_callback)(void),
     {
         // Got EAP success, authorization success
         auth_success = 1;
+        // Use DHCP service to get IP
+        system(dhcp_cmd_buf);
+
         if (success_callback != NULL)
             return success_callback();
         
@@ -410,9 +447,10 @@ int main(int argc, char **argv)
     char *usr = NULL;
     char *pwd = NULL;
     char *md5_str = "md5";
+    char *dhcp_cmd = "dhclient";
     int alloc_pwd_mem = 0;
 
-    while ((opt = getopt(argc, argv, "i:u:p:m:h")) != -1)
+    while ((opt = getopt(argc, argv, "i:u:p:m:d:h")) != -1)
     {
 		switch (opt)
         {
@@ -429,6 +467,10 @@ int main(int argc, char **argv)
 			if (strcmp(optarg, md5_str) == 0)
 				md5_method = MD5_METHOD_MD5;
 			break;
+        case 'd':
+            if (strcmp(optarg, dhcp_cmd) != 0)
+                dhcp_cmd = optarg;
+            break;
 		case 'h':
 			usage(stdout);
 			exit(0);
@@ -488,6 +530,12 @@ int main(int argc, char **argv)
 	}
 	if (alloc_pwd_mem)
 		free(pwd);
+    
+    if (set_dhcp_cmd(dhcp_cmd) != SUCCESS)
+    {
+        fprintf(stderr, "Failed to set DHCP command.\n");
+        exit(-1);
+    }
 
     if (init(ifname) != SUCCESS)
     {

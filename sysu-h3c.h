@@ -10,16 +10,6 @@
 #ifndef SYSU_H3C_H
 #define SYSU_H3C_H
 
-// Define the constants
-#define PACKET_BUF_SIZE 256
-#define USR_LEN 32
-#define PWD_LEN 32
-#define VER_CIPHER_BUF_SIZE 64
-#define IP_INFO_BUF_SIZE 6
-
-#define MD5_METHOD_XOR 0
-#define MD5_METHOD_MD5 0
-
 /*
  * Set username to buffer
  * 
@@ -41,6 +31,17 @@ int set_usr(const char *usr);
  *      If success return SUCCESS, else return PWD_TOO_LONG
  */
 int set_pwd(const char *pwd);
+
+/*
+ * Set dhcp command to buffer
+ * 
+ * Parameters:
+ *      usr: pointer to the dhcp command string
+ * 
+ * Return Value:
+ *      If success return SUCCESS, else return DHCP_CMD_TOO_LONG
+ */
+int set_dhcp_cmd(const char *dhcp_cmd);
 
 /*
  * Initialize a socket bind to the ethernet interface ifname, and set
