@@ -9,8 +9,9 @@
 
 #include <signal.h>
 #include <errno.h>
-#include <unistd.h> 
+#include <unistd.h>
 #include <netinet/in.h>
+#include <time.h>
 
 #include "sysu-h3c.h"
 #include "md5.h"
@@ -19,6 +20,10 @@
 #include "status.h"
 #include "handler.h"
 #include "io.h"
+
+#define RECON_TIME_AFTER_SUCCESS 5
+#define RECON_INTER_BEFORE_SUCCESS 30
+#define RECV_TIMEOUT_VALUE 40
 
 // Macro for convenient operation
 #define send_pkt_header ((struct packet_header *)send_buf)
@@ -39,10 +44,17 @@ static size_t ip_info_len = 0;
 static uint8_t ver_cipher[VER_CIPHER_BUF_SIZE];
 static size_t ver_cipher_len = 0;
 
-// Record whether the server address is recevived
-static int recev_server_addr = 0;
 // Record which MD5-Challenge method should be used
 static int md5_method = MD5_METHOD_XOR;
+// Record whether the server address is recevived
+static int recev_server_addr = 0;
+// Record whether authorization success
+static int auth_success = 0;
+// Record the reconnect time left (only used in reconnection
+// after authorization success)
+static int recon_time_left = 0;
+// Record the last received packet arrival time
+static time_t last_pkt_time;
 
 // Constant value for H3C version and key
 static const uint8_t H3C_VERSION[] = {'E', 'N', ' ', 'V', '5', '.', '2', '0',
@@ -101,7 +113,7 @@ int set_pwd(const char *pwd)
 int init(const char *ifname)
 {
     uint8_t hwaddr[ETHER_ADDR_LEN];
-    int flag = init_net(ifname, hwaddr);
+    int flag = init_net(ifname, hwaddr, RECV_TIMEOUT_VALUE);
     if (flag == SUCCESS)
         set_ether_header(send_pkt_header, PAE_GROUP_ADDR, hwaddr);
 
@@ -117,6 +129,10 @@ int init(const char *ifname)
 int start()
 {
     recev_server_addr = 0;
+    auth_success = 0;
+    recon_time_left = RECON_TIME_AFTER_SUCCESS;
+    last_pkt_time = time(NULL);
+    
     encrypt_h3c_ver(ver_cipher, &ver_cipher_len, H3C_VERSION,
         sizeof(H3C_VERSION), H3C_KEY, sizeof(H3C_KEY));
 
@@ -137,6 +153,41 @@ int logoff()
         send_pkt_header->ether_header.ether_dhost, PAE_GROUP_ADDR);
     set_eapol_header(send_pkt_header, EAPOL_TYPE_LOGOFF, 0);
     return sendout(send_buf, EAPOL_LOGOFF_PKT_SIZE);
+}
+
+/*
+ * Try reconnect when receive no data from server
+ * 
+ * Return Value:
+ *      If success, return SUCCESS, else return SEND_ERR
+ */
+static int reconnect()
+{
+    if (auth_success == 1 && recon_time_left-- > 0)
+    {
+        last_pkt_time = time(NULL);
+
+        // After authorization success, try to reconnect inmediately
+        recev_server_addr = 0;
+        encrypt_h3c_ver(ver_cipher, &ver_cipher_len, H3C_VERSION,
+            sizeof(H3C_VERSION), H3C_KEY, sizeof(H3C_KEY));
+
+        set_eapol_header(send_pkt_header, EAPOL_TYPE_START, 0);
+        return sendout(send_buf, EAPOL_START_PKT_SIZE);
+    }
+    else
+    {
+        last_pkt_time = time(NULL);
+
+        // If try reconnect time more than RECON_TIME_AFTER_SUCCESS
+        // consider it as reconnect before authorization success
+        if (recon_time_left <= 0)
+            auth_success = 0;
+        // Before authorization success, try to reconnect after
+        // RECON_INTER_BEFORE_SUCCESS seconds
+        sleep(RECON_INTER_BEFORE_SUCCESS);
+        return start();
+    }
 }
 
 /*
@@ -246,13 +297,31 @@ int response(int (*success_callback)(void), int (*failure_callback)(void),
 		int (*unkown_eapol_callback)(void), int (*unkown_eap_callback)(void),
 		int (*got_response_callback)(void))
 {
-    if (recvin(recv_buf, PACKET_BUF_SIZE) == RECV_ERR)
+    time_t arri_time;
+
+    int rs = recvin(recv_buf, PACKET_BUF_SIZE);
+    if (rs == RECV_ERR)
         return RECV_ERR;
+    else if (rs == RECV_TIMEOUT_ERR)
+        return reconnect();
     
+    // There may be other device in the network, the socket may catch
+    // the EAP packet to them, even if this host is offline, it stiil
+    // can catch those packet, so we can only use the socket receive
+    // timeout to decide whether this host received Keep-Alive packet
+    // from server.
+    arri_time = time(NULL);
+    if (difftime(arri_time, last_pkt_time) > RECV_TIMEOUT_VALUE)
+        return reconnect();
+
+    // If MAC address is not match, skip it
     if (memcmp(recv_pkt_header->ether_header.ether_dhost,
         send_pkt_header->ether_header.ether_shost, ETHER_ADDR_LEN) != 0)
         return SUCCESS;
     
+    // Record the arrival time of the last packet to this host
+    last_pkt_time = arri_time;
+    // Save the MAC address of server from the first packet from server
     if (recev_server_addr == 0)
     {
         set_ether_header(send_pkt_header, recv_pkt_header->ether_header.ether_shost,
@@ -270,7 +339,8 @@ int response(int (*success_callback)(void), int (*failure_callback)(void),
     }
     if (recv_pkt_header->eap_header.code == EAP_CODE_SUCCESS)
     {
-        // Got EAP success
+        // Got EAP success, authorization success
+        auth_success = 1;
         if (success_callback != NULL)
             return success_callback();
         
@@ -278,7 +348,8 @@ int response(int (*success_callback)(void), int (*failure_callback)(void),
     }
     else if (recv_pkt_header->eap_header.code == EAP_CODE_FAILURE)
     {
-        // Got EAP failure
+        // Got EAP failure, means server return logoff
+        auth_success = 0;
         if (failure_callback != NULL)
             return failure_callback();
         

@@ -17,6 +17,7 @@
 #include <net/if.h>
 #include <netinet/in.h>
 #include <sys/ioctl.h>
+#include <sys/time.h>
 
 #include "io.h"
 #include "packet.h"
@@ -90,13 +91,17 @@ int echo_on()
  * Parameters:
  *      ifname: pointer to interface name string
  *      hwaddr: pointer to the buffer where the MAC address is stored
+ * 		to: timeout value in seconds
  * 
  * Return Value:
  *      If success, return SUCCESS, else return the No. of the error message.
  */
-int init_net(const char *ifname, uint8_t *hwaddr)
+int init_net(const char *ifname, uint8_t *hwaddr, time_t to)
 {
 	struct ifreq ifr;
+	struct timeval timeout;
+	timeout.tv_sec = to;
+	timeout.tv_usec = 0;
 	
 	// Open a socket
 	if ((sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETHER_TYPE_PAE))) == -1)
@@ -112,6 +117,10 @@ int init_net(const char *ifname, uint8_t *hwaddr)
 	// Get interface MAC address
 	if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) == -1)
 		return SOCKET_GET_HWADDR_ERR;
+	
+	// Set socket receive timeout
+	if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) != 0)
+		return SOCKET_SET_TIMEO_ERR;
 	
 	memcpy(hwaddr, ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
 
@@ -161,7 +170,12 @@ int recvin(void *buf, size_t len)
 {
 	socklen_t addr_len = sizeof(addr);
 	if (recvfrom(sockfd, buf, len, 0, (struct sockaddr *)&addr, &addr_len) == -1)
+	{
+		if (errno == EWOULDBLOCK)
+			return RECV_TIMEOUT_ERR;
+		
 		return RECV_ERR;
+	}
 	
 	return SUCCESS;
 }
