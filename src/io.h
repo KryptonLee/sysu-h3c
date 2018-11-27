@@ -79,4 +79,14 @@ int recvin(void *buf, size_t len);
  */
 void print_usage(FILE *stream);
 
+/*
+ * Get the info string of the status code
+ * 
+ * Parameters:
+ *      statno: status code
+ * Return Value:
+ *      The info string of statno
+ */
+const char *str_statno(int statno);
+
 #endif // IO_H

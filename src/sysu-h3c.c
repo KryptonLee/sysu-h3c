@@ -476,6 +476,7 @@ int main(int argc, char **argv)
     char *md5_str = "md5";
     char *dhcp_cmd = "dhclient";
     bool alloc_pwd_mem = false;
+    int statno;
 
     while ((opt = getopt(argc, argv, "i:u:p:m:D:d:h")) != -1)
     {
@@ -567,15 +568,15 @@ int main(int argc, char **argv)
         exit(-1);
     }
 
-    if (init(ifname) != SUCCESS)
+    if ((statno = init(ifname)) != SUCCESS)
     {
-		fprintf(stderr, "Failed to initialize: %s\n", strerror(errno));
+		fprintf(stderr, "Failed to initialize: %s\n", str_statno(statno));
 		exit(-1);
 	}
 
-	if (start() != SUCCESS)
+	if ((statno = start()) != SUCCESS)
     {
-		fprintf(stderr, "Failed to start: %s\n", strerror(errno));
+		fprintf(stderr, "Failed to start: %s\n", str_statno(statno));
 		exit(-1);
 	}
 
@@ -584,9 +585,9 @@ int main(int argc, char **argv)
 
 	while(true)
     {
-		if (response() != SUCCESS)
+		if ((statno = response()) != SUCCESS)
         {
-			fprintf(stderr, "Failed to response: %s\n", strerror(errno));
+			fprintf(stderr, "Failed to response: %s\n", str_statno(statno));
 			exit(-1);
 		}
 	}

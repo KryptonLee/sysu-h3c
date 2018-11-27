@@ -196,3 +196,44 @@ such as 'dhclient' and 'udhcpc' \n\t\t\toptional, default is 'dhclient'\n");
 	fprintf(stream, "  -d \t\t\trun as daemon\n");
 	fprintf(stream, "  -h\t\t\tshow this message\n");
 }
+
+/*
+ * Get the info string of the status code
+ * 
+ * Parameters:
+ *      statno: status code
+ * Return Value:
+ *      The info string of statno
+ */
+const char *str_statno(int statno)
+{
+	switch(statno)
+	{
+		case SUCCESS:
+			return "Success";
+		case USR_TOO_LONG:
+			return "Username is too long";
+		case PWD_TOO_LONG:
+			return "Password is too long";
+		case DHCP_CMD_TOO_LONG:
+			return "DHCP command is too long";
+		case SOCKET_OPEN_ERR:
+			return "Fail to open the socket";
+		case SOCKET_SET_IF_ERR:
+			return "Fail to bind the socket to the interface";
+		case SOCKET_GET_HWADDR_ERR:
+			return "Fail to get the MAC address of the interface";
+		case SOCKET_SET_TIMEO_ERR:
+			return "Fail to set socket timeout";
+		case SEND_ERR:
+			return "Fail to send data";
+		case RECV_ERR:
+			return "Fail to receive data";
+		case RECV_TIMEOUT:
+			return "Receive data timeout";
+		case AUTH_FAILURE:
+			return "Authenticaton failure";
+		default:
+			return "Unknon status code";
+	}
+}
