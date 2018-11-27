@@ -478,7 +478,7 @@ int main(int argc, char **argv)
     bool alloc_pwd_mem = false;
     int statno;
 
-    while ((opt = getopt(argc, argv, "i:u:p:m:D:d:h")) != -1)
+    while ((opt = getopt(argc, argv, "i:u:p:m:D:dh")) != -1)
     {
 		switch (opt)
         {
