@@ -65,6 +65,7 @@ static int md5_method = MD5_METHOD_XOR;
 static bool recev_server_addr = false;
 // Record whether authentication is success
 static bool auth_success = true;
+static bool as_daemon = false;
 // Record the re-authentication time left (only used
 // after authentication success)
 static int reauth_time_left = 0;
@@ -147,11 +148,11 @@ int set_dhcp_cmd(const char *dhcp_cmd)
 int init(const char *ifname)
 {
     uint8_t hwaddr[ETHER_ADDR_LEN];
-    int flag = init_net(ifname, hwaddr, RECV_TIMEOUT_SECS);
-    if (flag == SUCCESS)
+    int statno = init_net(ifname, hwaddr, RECV_TIMEOUT_SECS);
+    if (statno == SUCCESS)
         set_ether_header(send_pkt_header, PAE_GROUP_ADDR, hwaddr);
 
-    return flag;
+    return statno;
 }
 
 /*
@@ -373,11 +374,12 @@ int response()
     {
         // Got EAP success, authentication success
         auth_success = true;
-        // Use DHCP service to get IP
+        // Run the DHCP command to get IP
         system(dhcp_cmd_buf);
         printf("Authentication suceess, you are now online.\n");
-        // Run as a daemon
-        daemon(0, 0);
+        // Run as a daemon if needed
+        if (as_daemon)
+            daemon(0, 0);
         
         return SUCCESS;
     }
@@ -473,9 +475,9 @@ int main(int argc, char **argv)
     char *pwd = NULL;
     char *md5_str = "md5";
     char *dhcp_cmd = "dhclient";
-    int alloc_pwd_mem = 0;
+    bool alloc_pwd_mem = false;
 
-    while ((opt = getopt(argc, argv, "i:u:p:m:d:h")) != -1)
+    while ((opt = getopt(argc, argv, "i:u:p:m:D:d:h")) != -1)
     {
 		switch (opt)
         {
@@ -492,9 +494,12 @@ int main(int argc, char **argv)
 			if (strcmp(optarg, md5_str) == 0)
 				md5_method = MD5_METHOD_MD5;
 			break;
-        case 'd':
+        case 'D':
             if (strcmp(optarg, dhcp_cmd) != 0)
                 dhcp_cmd = optarg;
+            break;
+        case 'd':
+            as_daemon = true;
             break;
 		case 'h':
 			print_usage(stdout);
@@ -538,7 +543,7 @@ int main(int argc, char **argv)
 
 		echo_off();
 		fgets(pwd, PWD_LEN - 1, stdin);
-		alloc_pwd_mem = 1;
+		alloc_pwd_mem = true;
 		echo_on();
 
 		// Replace '\n' with '\0', as it is NOT part of password
