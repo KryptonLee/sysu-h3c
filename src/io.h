@@ -77,6 +77,6 @@ int recvin(void *buf, size_t len);
 /*
  * Print the usage of this program to stream.
  */
-void usage(FILE *stream);
+void print_usage(FILE *stream);
 
 #endif // IO_H

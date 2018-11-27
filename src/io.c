@@ -183,7 +183,7 @@ int recvin(void *buf, size_t len)
 /*
  * Print the usage of this program to stream.
  */
-void usage(FILE *stream)
+void print_usage(FILE *stream)
 {
 	fprintf(stream, "Usage: sysu-h3c [OPTION]...\n");
 	fprintf(stream, "  -i <interface>\tspecify interface, required\n");

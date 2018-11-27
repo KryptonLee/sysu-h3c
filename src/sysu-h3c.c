@@ -497,10 +497,10 @@ int main(int argc, char **argv)
                 dhcp_cmd = optarg;
             break;
 		case 'h':
-			usage(stdout);
+			print_usage(stdout);
 			exit(0);
 		default:
-			usage(stderr);
+			print_usage(stderr);
 			exit(-1);
 		}
 	}
@@ -514,7 +514,7 @@ int main(int argc, char **argv)
 
 	if (ifname == NULL || usr == NULL)
     {
-		usage(stderr);
+		print_usage(stderr);
 		exit(-1);
 	}
 
