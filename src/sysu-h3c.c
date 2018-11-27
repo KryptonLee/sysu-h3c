@@ -19,7 +19,6 @@
 #include "h3c_encrypt.h"
 #include "packet.h"
 #include "status.h"
-#include "handler.h"
 #include "io.h"
 
 // Define the constants
@@ -329,9 +328,7 @@ static int send_response_h3c(uint8_t pkt_id)
  * Return Value:
  *      Return the action status
  */
-int response(int (*success_callback)(void), int (*failure_callback)(void),
-		int (*unkown_eapol_callback)(void), int (*unkown_eap_callback)(void),
-		int (*got_response_callback)(void))
+int response()
 {
     time_t arri_time;
 
@@ -368,10 +365,9 @@ int response(int (*success_callback)(void), int (*failure_callback)(void),
     if (recv_pkt_header->eapol_header.type != EAPOL_TYPE_EAPPACKET)
     {
         // Got unknown EAPOL type
-        if (unkown_eapol_callback != NULL)
-            return unkown_eapol_callback();
-        
-        return EAPOL_UNHANDLED;
+        // Some H3C version may use the info in these packets, 
+        // but the version in SYSU east campus not, so just skip them
+        return SUCCESS;
     }
     if (recv_pkt_header->eap_header.code == EAP_CODE_SUCCESS)
     {
@@ -379,20 +375,18 @@ int response(int (*success_callback)(void), int (*failure_callback)(void),
         auth_success = true;
         // Use DHCP service to get IP
         system(dhcp_cmd_buf);
-
-        if (success_callback != NULL)
-            return success_callback();
+        printf("You are now ONLINE.\n");
+        // Run as a daemon
+        daemon(0, 0);
         
-        return SUCCESS_UNHANDLED;
+        return SUCCESS;
     }
     else if (recv_pkt_header->eap_header.code == EAP_CODE_FAILURE)
     {
         // Got EAP failure, means server return logoff
-        auth_success = false;
-        if (failure_callback != NULL)
-            return failure_callback();
+	    printf("You are now OFFLINE.\n");
         
-        return FAILURE_UNHANDLED;
+        return SUCCESS;
     }
     else if (recv_pkt_header->eap_header.code == EAP_CODE_REQUEST)
     {
@@ -407,24 +401,23 @@ int response(int (*success_callback)(void), int (*failure_callback)(void),
             case EAP_TYPE_H3C:
                 return send_response_h3c(recv_pkt_header->eap_header.id);
         }
-
-        return EAP_UNHANDLED;
+        // Some H3C version may use the info in packets of other EAP type, 
+        // but the version in SYSU east campus not, so just skip them
+        return SUCCESS;
     }
     else if (recv_pkt_header->eap_header.code == EAP_CODE_RESPONSE)
     {
         // Got EAP response
-        if (got_response_callback != NULL)
-            return got_response_callback();
-        
-        return RESPONSE_UNHANDLED;
+        // In the authentation process, the client never gets
+        // response from server
+        return SUCCESS;
     }
     else
     {
         // Got unknown EAP type
-        if (unkown_eap_callback != NULL)
-            return unkown_eap_callback();
-
-        return EAP_UNHANDLED;
+        // Some H3C version may use the info in these packets, 
+        // but the version in SYSU east campus not, so just skip them
+        return SUCCESS;
     }
 }
 
@@ -437,6 +430,33 @@ int response(int (*success_callback)(void), int (*failure_callback)(void),
 int cleanup()
 {
     return close_net();
+}
+
+/*
+ * Handler function for exit while ONLINE
+ * 
+ * Parameters:
+ *      arg: signal
+ */
+void exit_handler(int arg)
+{
+	puts("\nExiting...\n");
+	logoff();
+	cleanup();
+	exit(0);
+}
+
+/*
+ * Handler function for exit while input
+ * 
+ * Parameters:
+ *      arg: signal
+ */
+void exit_while_input(int arg)
+{
+	putchar('\n');
+	echo_on();
+	exit(0);
 }
 
 /*
@@ -554,10 +574,9 @@ int main(int argc, char **argv)
 	signal(SIGINT, exit_handler);
 	signal(SIGTERM, exit_handler);
 
-	for (;;)
+	while(true)
     {
-		if (response(success_handler, failure_handler, unkown_eapol_handler,
-				unkown_eap_handler, got_response_handler) != SUCCESS)
+		if (response() != SUCCESS)
         {
 			fprintf(stderr, "Failed to response: %s\n", strerror(errno));
 			exit(-1);

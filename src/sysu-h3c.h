@@ -84,9 +84,7 @@ int logoff();
  * Return Value:
  *      Return the action status
  */
-int response(int (*success_callback)(void), int (*failure_callback)(void),
-		int (*unkown_eapol_callback)(void), int (*unkown_eap_callback)(void),
-		int (*got_response_callback)(void));
+int response();
 
 /*
  * Release the resource
