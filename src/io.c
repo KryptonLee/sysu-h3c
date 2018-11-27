@@ -172,7 +172,7 @@ int recvin(void *buf, size_t len)
 	if (recvfrom(sockfd, buf, len, 0, (struct sockaddr *)&addr, &addr_len) == -1)
 	{
 		if (errno == EWOULDBLOCK)
-			return RECV_TIMEOUT_ERR;
+			return RECV_TIMEOUT;
 		
 		return RECV_ERR;
 	}

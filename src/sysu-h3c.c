@@ -335,7 +335,7 @@ int response()
     int rs = recvin(recv_buf, PACKET_BUF_SIZE);
     if (rs == RECV_ERR)
         return RECV_ERR;
-    else if (rs == RECV_TIMEOUT_ERR)
+    else if (rs == RECV_TIMEOUT)
         return reauth();
     
     // There may be other devices in the network, the socket may catch
@@ -375,7 +375,7 @@ int response()
         auth_success = true;
         // Use DHCP service to get IP
         system(dhcp_cmd_buf);
-        printf("You are now ONLINE.\n");
+        printf("Authentication suceess, you are now online.\n");
         // Run as a daemon
         daemon(0, 0);
         
@@ -383,10 +383,13 @@ int response()
     }
     else if (recv_pkt_header->eap_header.code == EAP_CODE_FAILURE)
     {
-        // Got EAP failure, means server return logoff
-	    printf("You are now OFFLINE.\n");
+        // Got EAP failure, means authentication failure
+	    printf("Authentication failure, check the username and password.\n");
+        printf("If you ensure those info is correct, report an issue to me\
+    on https://github.com/KryptonLee/sysu-h3c/issues, as the H3C authentication\
+    version may change.");
         
-        return SUCCESS;
+        return AUTH_FAILURE;
     }
     else if (recv_pkt_header->eap_header.code == EAP_CODE_REQUEST)
     {
@@ -408,7 +411,7 @@ int response()
     else if (recv_pkt_header->eap_header.code == EAP_CODE_RESPONSE)
     {
         // Got EAP response
-        // In the authentation process, the client never gets
+        // In the authentication process, the client never gets
         // response from server
         return SUCCESS;
     }
