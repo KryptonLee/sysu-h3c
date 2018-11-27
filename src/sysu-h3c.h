@@ -56,7 +56,7 @@ int set_dhcp_cmd(const char *dhcp_cmd);
 int init(const char *ifname);
 
 /*
- * Send a EAPOL start packet to initialize authorization
+ * Send a EAPOL start packet to initialize authentication
  * 
  * Return Value:
  *      If success, return SUCCESS, else return SEND_ERR

@@ -37,12 +37,12 @@ int echo_on();
  * Parameters:
  *      ifname: pointer to interface name string
  *      hwaddr: pointer to the buffer where the MAC address is stored
- * 		to: timeout value in seconds
+ * 		to_secs: timeout value in seconds
  * 
  * Return Value:
  *      If success, return SUCCESS, else return the No. of the error message.
  */
-int init_net(const char *ifname, uint8_t *hwaddr, time_t to);
+int init_net(const char *ifname, uint8_t *hwaddr, time_t to_secs);
 /*
  * Close the socket.
  * 

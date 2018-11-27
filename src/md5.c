@@ -57,19 +57,19 @@ static const uint32_t S[] = {
  * 
  * Parameters:
  *      M: 16 groups in a block
- *      a_stat: pointer to the chaining variable A
- *      b_stat: pointer to the chaining variable B
- *      c_stat: pointer to the chaining variable C
- *      d_stat: pointer to the chaining variable D
+ *      a_chain: pointer to the chaining variable A
+ *      b_chain: pointer to the chaining variable B
+ *      c_chain: pointer to the chaining variable C
+ *      d_chain: pointer to the chaining variable D
  */
-static void main_loop(uint32_t M[], uint32_t *a_stat, 
-    uint32_t *b_stat, uint32_t *c_stat,  uint32_t *d_stat)
+static void main_loop(uint32_t M[], uint32_t *a_chain, 
+    uint32_t *b_chain, uint32_t *c_chain,  uint32_t *d_chain)
 {
     uint32_t f, g, tmp;
-    uint32_t a = *a_stat;
-    uint32_t b = *b_stat;
-    uint32_t c = *c_stat;
-    uint32_t d = *d_stat;
+    uint32_t a = *a_chain;
+    uint32_t b = *b_chain;
+    uint32_t c = *c_chain;
+    uint32_t d = *d_chain;
     int i = 0;
 
     for(i = 0; i < 64; i++)
@@ -100,10 +100,10 @@ static void main_loop(uint32_t M[], uint32_t *a_stat,
         b += ROTATE_LEFT((a + f + T[i] + M[g]), S[i]);
         a = tmp;
     }
-    *a_stat += a;
-    *b_stat += b;
-    *c_stat += c;
-    *d_stat += d;
+    *a_chain += a;
+    *b_chain += b;
+    *c_chain += c;
+    *d_chain += d;
 }
 
 /*
@@ -172,7 +172,7 @@ static uint32_t *padding(uint32_t *pad_buf, const uint8_t *src, size_t src_len)
 uint8_t * get_md5(uint8_t *md5_buf, uint8_t *src, size_t src_len)
 {
     // Initialize the chaining variables
-    uint32_t stat[] = {A, B, C, D};
+    uint32_t chain_val[] = {A, B, C, D};
     size_t i = 0, j = 0, pad_len = 0;
     uint32_t *groups;
     pad_len = get_padding_len(src_len);
@@ -182,15 +182,16 @@ uint8_t * get_md5(uint8_t *md5_buf, uint8_t *src, size_t src_len)
     // Main loop
     groups = padding(groups, src, src_len);
     for(i = 0; i < pad_len; i += 16)
-        main_loop(groups + i, &stat[0], &stat[1], &stat[2], &stat[3]);
+        main_loop(groups + i, &chain_val[0], &chain_val[1],
+            &chain_val[2], &chain_val[3]);
 
     free(groups);
     
-    // Cannot copy the memory from stat to md5_buf directly as
+    // Cannot copy the memory from chain_val to md5_buf directly as
     // different platforms have different byte order
     for(i = 0; i < 4; i++)
         for(j = 0; j < 4; j++)
-            md5_buf[i * 4 + j] = (stat[i] >> (j * 8)) & 0xff;
+            md5_buf[i * 4 + j] = (chain_val[i] >> (j * 8)) & 0xff;
 
     return md5_buf;
 }

@@ -16,7 +16,7 @@
 #include "sysu-h3c.h"
 
 /*
- * Handler function for authorization success
+ * Handler function for authentication success
  * 
  * Return Value:
  *      If success, return SUCCESS, else return -1
@@ -50,7 +50,7 @@ int failure_handler()
 int unkown_eapol_handler()
 {
 	// Directly skip it as it has no effect on the
-	// authorization process
+	// authentication process
     return SUCCESS;
 }
 
@@ -63,7 +63,7 @@ int unkown_eapol_handler()
 int unkown_eap_handler()
 {
 	// Directly skip it as it has no effect on the
-	// authorization process
+	// authentication process
     return SUCCESS;
 }
 
@@ -76,7 +76,7 @@ int unkown_eap_handler()
 int got_response_handler()
 {
 	// Directly skip it as it has no effect on the
-	// authorization process
+	// authentication process
     return SUCCESS;
 }
 

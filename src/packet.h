@@ -56,7 +56,7 @@
 #define EAP_MD5_LEN_SIZE 1
 #define EAP_H3C_PWLEN_SIZE 1
 
-// Size of some packet type
+// Size of some kinds of packet
 #define ETHER_HEADER_SIZE sizeof(struct ether_header)
 #define EAPOL_HEADER_SIZE sizeof(struct eapol_header)
 #define EAP_HEADER_SIZE sizeof(struct eap_header)
@@ -150,7 +150,7 @@ static inline void set_eap_header(struct packet_header *pkt_h,
  *      pkt: pointer to the packet
  * 
  * Return Value:
- *      EAP type value of the packet
+ *      Pointer to the EAP type value of the packet
  */
 static inline uint8_t *get_eap_type(void *pkt)
 {
@@ -184,7 +184,7 @@ static inline uint8_t *get_eap_md5_value(void *pkt)
 void set_eap_id_info(void *pkt, const uint8_t *ver_cipher,
     size_t ver_cipher_len, const char *usr, size_t usr_len);
 /*
- * Set the MD5 info (type-data field) of a EAP MD5-Challenge packet
+ * Set the MD5 info (type-data field) of a EAP-MD5-Challenge packet
  * 
  * Parameters:
  *      pkt: pointer to the packet

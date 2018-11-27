@@ -9,7 +9,7 @@
 
 
 /*
- * Handler function for authorization success
+ * Handler function for authentication success
  * 
  * Return Value:
  *      If success, return SUCCESS, else return -1

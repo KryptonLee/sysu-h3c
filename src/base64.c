@@ -36,7 +36,8 @@ static inline int index_strchr(const char *str, char c) {
  * Base64 encode method
  * 
  * Parameters:
- *      endata: pointer to the buffer where the encoded data is to be store
+ *      endata: pointer to the buffer where the encoded data is to be stored
+ *              please make sure its size is bigger enough to stored data
  *      src: pointer to the source data to be encoded
  *      len: the length of source data in bytes
  * Return Value:
@@ -91,7 +92,8 @@ char *base64_encode(char *endata, const char *src, size_t len)
  * Base64 decode method
  * 
  * Parameters:
- *      dedata: pointer to the buffer where the decoded data is to be store
+ *      dedata: pointer to the buffer where the decoded data is to be stored
+ *              please make sure its size is bigger enough to stored data
  *      src: pointer to the source data to be decoded
  *      len: the length of source data in bytes
  * Return Value:

@@ -38,7 +38,7 @@ void set_eap_id_info(void *pkt, const uint8_t *ver_cipher,
 }
 
 /*
- * Set the MD5 info (type-data field) of a EAP MD5-Challenge packet
+ * Set the MD5 info (type-data field) of a EAP-MD5-Challenge packet
  * 
  * Parameters:
  *      pkt: pointer to the packet
@@ -59,7 +59,7 @@ void set_eap_md5_info(void *pkt, const uint8_t *md5_value,
     // Pointer to MD5-Value field
     ptr += EAP_MD5_LEN_SIZE;
     memcpy(ptr, md5_value, EAP_MD5_VALUE_SIZE);
-    // Pointer to MD5 username field
+    // Pointer to MD5 extra data field
     ptr += EAP_MD5_VALUE_SIZE;
     memcpy(ptr, usr, usr_len);
 }
