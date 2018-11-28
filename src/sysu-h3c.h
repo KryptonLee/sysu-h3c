@@ -4,11 +4,14 @@
  * Creation Time: 2018.11.23
  * 
  * Function:
- *      Main program to run.
+ *      H3C authentication module.
  */
 
 #ifndef SYSU_H3C_H
 #define SYSU_H3C_H
+
+#define USR_LEN 32
+#define PWD_LEN 32
 
 /*
  * Set username to buffer
@@ -33,6 +36,17 @@ int set_usr(const char *usr);
 int set_pwd(const char *pwd);
 
 /*
+ * Set which MD5 method to be used
+ * 
+ * Parameters:
+ *      method: pointer to the MD5 method string
+ * 
+ * Return Value:
+ *      If success return SUCCESS, else return UNSUPPORT_MD5_METHOD
+ */
+int set_md5_method(const char *method);
+
+/*
  * Set dhcp command to buffer
  * 
  * Parameters:
@@ -42,6 +56,11 @@ int set_pwd(const char *pwd);
  *      If success return SUCCESS, else return DHCP_CMD_TOO_LONG
  */
 int set_dhcp_cmd(const char *dhcp_cmd);
+
+/*
+ * Set to run as daemon
+ */
+int set_to_daemon();
 
 /*
  * Initialize a socket bind to the ethernet interface ifname, and set

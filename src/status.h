@@ -10,7 +10,8 @@
 #define SUCCESS 0
 #define USR_TOO_LONG 1
 #define PWD_TOO_LONG 2
-#define DHCP_CMD_TOO_LONG 3
+#define UNSUPPORT_MD5_METHOD 3
+#define DHCP_CMD_TOO_LONG 4
 
 #define SOCKET_OPEN_ERR 11
 #define SOCKET_SET_IF_ERR 12

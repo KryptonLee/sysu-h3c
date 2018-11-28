@@ -215,6 +215,8 @@ const char *str_statno(int statno)
 			return "Username is too long";
 		case PWD_TOO_LONG:
 			return "Password is too long";
+		case UNSUPPORT_MD5_METHOD:
+			return "Unsupport MD5 method";
 		case DHCP_CMD_TOO_LONG:
 			return "DHCP command is too long";
 		case SOCKET_OPEN_ERR:

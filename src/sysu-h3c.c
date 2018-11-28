@@ -4,15 +4,13 @@
  * Creation Time: 2018.11.23
  * 
  * Function:
- *      Main program to run.
+ *      H3C authentication module.
  */
 
 #include <stdbool.h>
-#include <signal.h>
-#include <errno.h>
+#include <time.h>
 #include <unistd.h>
 #include <netinet/in.h>
-#include <time.h>
 
 #include "sysu-h3c.h"
 #include "md5.h"
@@ -24,8 +22,6 @@
 // Define the constants
 #define PACKET_BUF_SIZE 256
 #define DHCP_CMD_BUF_SIZE 32
-#define USR_LEN 32
-#define PWD_LEN 32
 #define VER_CIPHER_BUF_SIZE 64
 #define IP_INFO_BUF_SIZE 6
 
@@ -117,6 +113,27 @@ int set_pwd(const char *pwd)
 }
 
 /*
+ * Set which MD5 method to be used
+ * 
+ * Parameters:
+ *      method: pointer to the MD5 method string
+ * 
+ * Return Value:
+ *      If success return SUCCESS, else return UNSUPPORT_MD5_METHOD
+ */
+int set_md5_method(const char *method)
+{
+    if (method == NULL || strcmp(method, "xor") == 0)
+        md5_method = MD5_METHOD_XOR;
+    else if (strcmp(method, "md5") == 0)
+        md5_method = MD5_METHOD_MD5;
+    else
+        return UNSUPPORT_MD5_METHOD;
+    
+    return SUCCESS;
+}
+
+/*
  * Set dhcp command to buffer
  * 
  * Parameters:
@@ -133,6 +150,14 @@ int set_dhcp_cmd(const char *dhcp_cmd)
     
     strcpy(dhcp_cmd_buf, dhcp_cmd);
     return SUCCESS;
+}
+
+/*
+ * Set to run as daemon
+ */
+int set_to_daemon()
+{
+    as_daemon = true;
 }
 
 /*
@@ -183,9 +208,10 @@ int start()
  */
 int logoff()
 {
+	printf("\nLogging off...\n");
     // EAP logoff packet should use PAE boardcast address
-    set_ether_header(send_pkt_header,
-        send_pkt_header->ether_header.ether_dhost, PAE_GROUP_ADDR);
+    set_ether_header(send_pkt_header, PAE_GROUP_ADDR,
+        send_pkt_header->ether_header.ether_shost);
     set_eapol_header(send_pkt_header, EAPOL_TYPE_LOGOFF, 0);
     return sendout(send_buf, EAPOL_LOGOFF_PKT_SIZE);
 }
@@ -379,7 +405,10 @@ int response()
         printf("Authentication suceess, you are now online.\n");
         // Run as a daemon if needed
         if (as_daemon)
+        {
+            printf("Run as daemon.\n");
             daemon(0, 0);
+        }
         
         return SUCCESS;
     }
@@ -389,7 +418,7 @@ int response()
 	    printf("Authentication failure, check the username and password.\n");
         printf("If you ensure those info is correct, report an issue to me\
     on https://github.com/KryptonLee/sysu-h3c/issues, as the H3C authentication\
-    version may change.");
+    version may change.\n");
         
         return AUTH_FAILURE;
     }
@@ -435,162 +464,4 @@ int response()
 int cleanup()
 {
     return close_net();
-}
-
-/*
- * Handler function for exit while ONLINE
- * 
- * Parameters:
- *      arg: signal
- */
-void exit_handler(int arg)
-{
-	puts("\nExiting...\n");
-	logoff();
-	cleanup();
-	exit(0);
-}
-
-/*
- * Handler function for exit while input
- * 
- * Parameters:
- *      arg: signal
- */
-void exit_while_input(int arg)
-{
-	putchar('\n');
-	echo_on();
-	exit(0);
-}
-
-/*
- * Main program entrance
- */
-int main(int argc, char **argv)
-{
-    int opt;
-    char *ifname = NULL;
-    char *usr = NULL;
-    char *pwd = NULL;
-    char *md5_str = "md5";
-    char *dhcp_cmd = "dhclient";
-    bool alloc_pwd_mem = false;
-    int statno;
-
-    while ((opt = getopt(argc, argv, "i:u:p:m:D:dh")) != -1)
-    {
-		switch (opt)
-        {
-		case 'i':
-			ifname = optarg;
-			break;
-		case 'u':
-			usr = optarg;
-			break;
-		case 'p':
-			pwd = optarg;
-			break;
-		case 'm':
-			if (strcmp(optarg, md5_str) == 0)
-				md5_method = MD5_METHOD_MD5;
-			break;
-        case 'D':
-            if (strcmp(optarg, dhcp_cmd) != 0)
-                dhcp_cmd = optarg;
-            break;
-        case 'd':
-            as_daemon = true;
-            break;
-		case 'h':
-			print_usage(stdout);
-			exit(0);
-		default:
-			print_usage(stderr);
-			exit(-1);
-		}
-	}
-
-    // Must run as root user
-    if (geteuid() != 0)
-    {
-		fprintf(stderr, "Run as root, please.\n");
-		exit(-1);
-	}
-
-	if (ifname == NULL || usr == NULL)
-    {
-		print_usage(stderr);
-		exit(-1);
-	}
-
-	if (set_usr(usr) != SUCCESS)
-    {
-		fprintf(stderr, "Failed to set username.\n");
-		exit(-1);
-	}
-
-    if (pwd == NULL)
-    {
-		if ((pwd = (char *) malloc(PWD_LEN)) == NULL)
-        {
-			fprintf(stderr, "Failed to malloc: %s\n", strerror(errno));
-			exit(-1);
-		}
-		printf("Password for %s:", usr);
-
-		signal(SIGINT, exit_while_input);
-		signal(SIGTERM, exit_while_input);
-
-		echo_off();
-		fgets(pwd, PWD_LEN - 1, stdin);
-		alloc_pwd_mem = true;
-		echo_on();
-
-		// Replace '\n' with '\0', as it is NOT part of password
-		pwd[strlen(pwd) - 1] = '\0';
-		putchar('\n');
-	}
-
-	if (set_pwd(pwd) != SUCCESS)
-    {
-		fprintf(stderr, "Failed to set password.\n");
-		if (alloc_pwd_mem)
-			free(pwd);
-		exit(-1);
-	}
-	if (alloc_pwd_mem)
-		free(pwd);
-    
-    if (set_dhcp_cmd(dhcp_cmd) != SUCCESS)
-    {
-        fprintf(stderr, "Failed to set DHCP command.\n");
-        exit(-1);
-    }
-
-    if ((statno = init(ifname)) != SUCCESS)
-    {
-		fprintf(stderr, "Failed to initialize: %s\n", str_statno(statno));
-		exit(-1);
-	}
-
-	if ((statno = start()) != SUCCESS)
-    {
-		fprintf(stderr, "Failed to start: %s\n", str_statno(statno));
-		exit(-1);
-	}
-
-	signal(SIGINT, exit_handler);
-	signal(SIGTERM, exit_handler);
-
-	while(true)
-    {
-		if ((statno = response()) != SUCCESS)
-        {
-			fprintf(stderr, "Failed to response: %s\n", str_statno(statno));
-			exit(-1);
-		}
-	}
-
-	return 0;
 }
