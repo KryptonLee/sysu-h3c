@@ -1,8 +1,15 @@
+CC = gcc
+prom = sysu-h3c
+deps = $(shell find ./ -name "*.h")
+src = $(shell find ./ -name "*.c")
+obj = $(src:%.c=%.o) 
 
-all: sysu-h3c
+$(prom): $(obj)
+	$(CC) -o $(prom) $(obj)
 
-sysu-h3c: main.o sysu-h3c.o packet.o io.o base64.o h3c_encrypt.o md5.o
+%.o: %.c $(deps)
+	$(CC) -c $< -o $@
 
-clean:
-	rm ./*.o
 .PHONY: clean
+clean:
+	rm -rf $(obj)
