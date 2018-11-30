@@ -33,35 +33,28 @@ re-authentication after recovery from network outage, and requesting IP
 from DHCP server after authentication success.
 
 ## Install
-Use git to clone the source code from github and checkout a specified
-version from tag (for example, v0.1.0).
+This branch is for Generating the ipk package for OpenWrt.
+Go to the root diretory of OpenWrt SDK or OpenWrt source code.
 ```
-git clone https://github.com/KryptonLee/sysu-h3c.git
-git checkout v0.1.0
+cd [root diretory of OpenWrt SDK or OpenWrt source code]
 ```
-Go to the root diretory of the source code.
+Use git to clone the Makefile to the package diretory in OpenWrt SDK or 
+OpenWrt source code root diretory.
 ```
-cd sysu-h3c
+git clone git clone -b openwrt https://github.com/KryptonLee/sysu-h3c.git \
+package/network/sysu-h3c
 ```
-**For Debian & Ubuntu**
+Select the sysu-h3c module in configuration.
 ```
-make clean && make
-sudo make install
+make menuconfig
 ```
-**For DietPi 6.16 (Debian 9.0) for ARM devices**
+Select the sysu-h3c module in Network submenu, save and exit configuration.
+Compile the sysu-h3c module.
 ```
-make clean && make && make install
+make package/network/sysu-h3c/compile
 ```
-**For macOS**
-```
-make clean && make && make install
-```
-**For CentOS**
-```
-make clean && make && make install
-```
-**For other OS**
-<br>Not test...
+Now, you can find the sysu-h3c ipk file in [OpenWrt SDK root]/bin/packages/
+[target]/base.
 
 ## License
 This software is licensed under the GNU General Public License v3.0.
