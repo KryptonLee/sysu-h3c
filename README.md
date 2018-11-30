@@ -32,6 +32,37 @@ it, the codes will become more difficult to read.
 re-authentication after recovery from network outage, and requesting IP 
 from DHCP server after authentication success.
 
+## Install
+Use git to clone the source code from github and checkout a specified
+version from tag (for example, v0.1.0).
+```
+git clone https://github.com/KryptonLee/sysu-h3c.git
+git checkout v0.1.0
+```
+Go to the root diretory of the source code.
+```
+cd sysu-h3c
+```
+**For Debian & Ubuntu**
+```
+make clean && make
+sudo make install
+```
+**For DietPi 6.16 (Debian 9.0) for ARM devices**
+```
+make clean && make && make install
+```
+**For macOS**
+```
+make clean && make && make install
+```
+**For CentOS**
+```
+make clean && make && make install
+```
+**For other OS**
+<br>Not test...
+
 ## License
 This software is licensed under the GNU General Public License v3.0.
 To learn more information, see 
