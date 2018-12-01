@@ -60,7 +60,7 @@ static int md5_method = MD5_METHOD_XOR;
 // Record whether the server address is recevived
 static bool recev_server_addr = false;
 // Record whether authentication is success
-static bool auth_success = true;
+static bool auth_success = false;
 static bool as_daemon = false;
 // Record the re-authentication time left (only used
 // after authentication success)
@@ -188,6 +188,7 @@ int init(const char *ifname)
  */
 int start()
 {
+    printf("Start authentication...\n");
     recev_server_addr = false;
     auth_success = false;
     reauth_time_left = MAX_RETRY_AFTER_SUCCESS;
@@ -196,6 +197,9 @@ int start()
     encrypt_h3c_ver(ver_cipher, &ver_cipher_len, H3C_VERSION,
         sizeof(H3C_VERSION), H3C_KEY, sizeof(H3C_KEY));
 
+    // EAP start packet should use PAE boardcast address
+    set_ether_header(send_pkt_header, PAE_GROUP_ADDR,
+        send_pkt_header->ether_header.ether_shost);
     set_eapol_header(send_pkt_header, EAPOL_TYPE_START, 0);
     return sendout(send_buf, EAPOL_START_PKT_SIZE);
 }
@@ -226,6 +230,7 @@ static int reauth()
 {
     if (auth_success == true && reauth_time_left-- > 0)
     {
+        printf("Disconnect from server, try reconnecting...\n");
         last_pkt_time = time(NULL);
 
         // After authentication success, try to re-authenticate inmediately
@@ -233,17 +238,20 @@ static int reauth()
         encrypt_h3c_ver(ver_cipher, &ver_cipher_len, H3C_VERSION,
             sizeof(H3C_VERSION), H3C_KEY, sizeof(H3C_KEY));
 
+        // EAP start packet should use PAE boardcast address
+        set_ether_header(send_pkt_header, PAE_GROUP_ADDR,
+            send_pkt_header->ether_header.ether_shost);
         set_eapol_header(send_pkt_header, EAPOL_TYPE_START, 0);
         return sendout(send_buf, EAPOL_START_PKT_SIZE);
     }
     else
     {
-        last_pkt_time = time(NULL);
-
+        printf("Authentication failure, try to re-authenticate after %d seconds.\n",
+            RETRY_INTER_BEFORE_SUCCESS);
         // If try re-authenticate more than RETRY_INTER_BEFORE_SUCCESS times
         // consider it as brand new authentication process
         if (reauth_time_left <= 0)
-            auth_success = 0;
+            auth_success = false;
         // Before authentication success, try to re-authenticate after
         // RETRY_INTER_BEFORE_SUCCESS seconds
         sleep(RETRY_INTER_BEFORE_SUCCESS);
@@ -374,9 +382,12 @@ int response()
     if (difftime(arri_time, last_pkt_time) > RECV_TIMEOUT_SECS)
         return reauth();
 
-    // If MAC address is not match, skip it
+    // If MAC address is not match client's MAC address or PAE broadcast
+    // address, skip it
     if (memcmp(recv_pkt_header->ether_header.ether_dhost,
-        send_pkt_header->ether_header.ether_shost, ETHER_ADDR_LEN) != 0)
+        send_pkt_header->ether_header.ether_shost, ETHER_ADDR_LEN) != 0
+        && memcmp(recv_pkt_header->ether_header.ether_dhost,
+        PAE_GROUP_ADDR, ETHER_ADDR_LEN) != 0)
         return SUCCESS;
     
     // Record the arrival time of the last packet to this host
