@@ -70,7 +70,7 @@ static time_t last_pkt_time;
 
 // Constant value for H3C version and key
 static const uint8_t H3C_VERSION[] = {'E', 'N', ' ', 'V', '5', '.', '2', '0',
-								'-', '0', '4', '0', '8', 0x00, 0x00, 0x00};
+                                '-', '0', '4', '0', '8', 0x00, 0x00, 0x00};
 const static uint8_t H3C_KEY[] = {'H', 'u', 'a', 'W', 'e', 'i',
                                 '3', 'C', 'O', 'M', '1', 'X'};
 
@@ -208,7 +208,7 @@ int start()
  */
 int logoff()
 {
-	printf("\nLogging off...\n");
+    printf("\nLogging off...\n");
     // EAP logoff packet should use PAE boardcast address
     set_ether_header(send_pkt_header, PAE_GROUP_ADDR,
         send_pkt_header->ether_header.ether_shost);
@@ -415,7 +415,7 @@ int response()
     else if (recv_pkt_header->eap_header.code == EAP_CODE_FAILURE)
     {
         // Got EAP failure, means authentication failure
-	    printf("Authentication failure, check the username and password.\n");
+        printf("Authentication failure, check the username and password.\n");
         printf("If you ensure those info is correct, report an issue to me\
     on https://github.com/KryptonLee/sysu-h3c/issues, as the H3C authentication\
     version may change.\n");
